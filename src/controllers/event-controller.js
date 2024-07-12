@@ -2,28 +2,31 @@ import {Router} from 'express';
 import EventService from '../services/event-service.js'
 import jwt from 'jsonwebtoken'
 import 'dotenv/config'
-const router = Router();
 const svc = new EventService();
 const port = 3000;
 
+export const router = Router();
+
+
 //2)
 router.get('', async (req, res) => {
-    
-const Arrayrespuesta = await svc.TraerListado();
-
-if(Arrayrespuesta != null)
-res.status(200).json(Arrayrespuesta)
-else {
-res.status(400).send("ERROR")
-}
-
-return respuesta;
+    try {
+        const respuesta = await svc.TraerListado();
+        if (respuesta !== null) {
+            res.status(200).json(respuesta);
+        } else {
+            res.status(400).send("ERROR: No se encontraron datos");
+        }
+    } catch (error) {
+        console.error("Error en el controlador:", error);
+        res.status(500).send("Error interno del servidor");
+    }
 });
 
 //3)
 router.get('', async (req, res) => {
 
-    const respuesta = await svc.TraerEventoFiltrado(name, category, date, tag);
+    const respuesta = await svc.TraerEventoFiltrado(req.query.name, req.query.category, req.query.date, req.query.tag);
     if(respuesta != null)
 res.status(200).json(respuesta)
 else {

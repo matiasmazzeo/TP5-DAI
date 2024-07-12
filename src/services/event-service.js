@@ -1,11 +1,13 @@
 import EventRepository from '../repositories/event-repository.js';
 
 export default class EventService {
-    TraerListado = async () => {
-        const repo = new EventRepository();
-        const returnArray = await repo.TraerEventoPorId();
-        return returnArray;
-    }
+
+TraerListado = async () => {
+    const repo = new EventRepository();
+    const returnArray = await repo.TraerListado(); 
+    return returnArray;
+}
+
     TraerEventoFiltrado = async (name, category, date, tag) => {
         const repo = new EventRepository();
         const returnArray = await repo.TraerEventoFiltrado(name, category, date, tag);

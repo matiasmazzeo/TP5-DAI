@@ -1,7 +1,7 @@
-import config from '../configs/db-config';
+import configs from '../configs/dbConfig.js';
 import pkg from 'pg';
 const { Client } = pkg;
-const client = new Client(config);
+const client = new Client(configs);
 
 export default class ProvinceRepository {
     TraerListado = async () => {
