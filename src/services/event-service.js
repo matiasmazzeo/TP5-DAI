@@ -18,9 +18,9 @@ TraerListado = async () => {
         const returnArray = await repo.TraerEventoPorId(id);
         return returnArray;
     }
-    TraerParticipantes = async (id, firstName, lastName, user, attended, rating) => {
+    TraerParticipantes = async (id, first_name, last_name, user, attended, rating) => {
         const repo = new EventRepository();
-        const returnArray = await repo.TraerParticipantes(id, firstName, lastName, user, attended, rating);
+        const returnArray = await repo.TraerParticipantes(id, first_name, last_name, user, attended, rating);
         return returnArray;
     }
     InsertarInscripciones = async (idEvent, idUser) => {
@@ -177,14 +177,14 @@ TraerListado = async () => {
         const returnArray = await repo.TraerCategoriaPorId(id);
         return returnArray;
     }
-    InsertarCategoria = async (name, displayOrder) => {
+    InsertarCategoria = async (name, display_order) => {
         const repo = new EventRepository();
-        const returnArray = await repo.InsertarCategoria(name, displayOrder);
+        const returnArray = await repo.InsertarCategoria(name, display_order);
         return returnArray;
     }
-    ActualizarCategoria = async (id, name, displayOrder) => {
+    ActualizarCategoria = async (id, name, display_order) => {
         const repo = new EventRepository();
-        const returnArray = await repo.ActualizarCategoria(id, name, displayOrder);
+        const returnArray = await repo.ActualizarCategoria(id, name, display_order);
         return returnArray;
     }
     BorrarCategoria = async (id) => {

@@ -12,16 +12,22 @@ export default class ProvinceService {
         const returnElement = await repo.TraerProvinciaPorId(id);
         return returnElement;
     }
-    
-    CrearProvincia = async (entity) => {
+
+    TraerLocacionesProvinciaPorId = async (id) => {
         const repo = new ProvinceRepository();
-        const returnElement = await repo.CrearProvincia(entity);
+        const returnElement = await repo.TraerLocacionesProvinciaPorId(id);
+        return returnElement;
+    }
+    
+    CrearProvincia = async (name, full_name, latitude, longitude, display_order) => {
+        const repo = new ProvinceRepository();
+        const returnElement = await repo.CrearProvincia(name, full_name, latitude, longitude, display_order);
         return returnElement;
     }
 
-    ActualizarProvincia = async (entity) => {
+    ActualizarProvincia = async (name, full_name, latitude, longitude, display_order, id) => {
         const repo = new ProvinceRepository();
-        const returnElement = await repo.ActualizarProvincia(entity);
+        const returnElement = await repo.ActualizarProvincia(name, full_name, latitude, longitude, display_order, id);
         return returnElement;
     }
 

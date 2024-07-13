@@ -6,6 +6,9 @@ import 'dotenv/config'
 export const router = Router();
 const svc = new UserService(); 
 
+
+//6
+
 router.post("/login", async (req, res) => {
    
         const respuesta = await svc.InsertarLogInUsuario(req.body.username, req.body.password);
@@ -20,6 +23,7 @@ router.post("/login", async (req, res) => {
             expiresIn: '4h',
             issuer: 'DAI_Eventos'
         }
+        console.log("secretkey:",process.env.SECRET_KEY)
         const token = jwt.sign(payload, process.env.SECRET_KEY, options);
         return res.status(201).json({"success": true, "message": "Usuario Validado", "token": token});
 });
@@ -27,7 +31,7 @@ router.post("/login", async (req, res) => {
 
 router.post("/register", async (req, res) => {
    
-        const respuesta = await svc.postRegisterUser(req.body.firstName, req.body.lastName, req.body.username, req.body.password);
+        const respuesta = await svc.InsertarRegistroUsuario(req.body.first_name, req.body.last_name, req.body.username, req.body.password);
         if(respuesta != null){
             res.status(200).send("Se Registró")
             return respuesta

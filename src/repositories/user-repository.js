@@ -3,13 +3,13 @@ import pkg from 'pg'
 const { Client, Pool } = pkg;
 
 export default class UserRepository {
-    InsertarRegistroUsuario = async (firstName, lastName, user, pass) => {
+    InsertarRegistroUsuario = async (first_name, last_name, user, pass) => {
         let response = null;
         const client = new Client(config);
         try {
             await client.connect();
             const sql = `INSERT INTO users(first_name, last_name, username, password) values($1, $2, $3, $4)`;
-            const values = [firstName, lastName, user, pass]
+            const values = [first_name, last_name, user, pass]
             const result = await client.query(sql, values);
             await client.end();
             response = result.rowCount;

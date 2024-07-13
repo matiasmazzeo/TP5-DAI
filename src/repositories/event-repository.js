@@ -15,14 +15,14 @@ TraerListado = async () => {
                 E.name,
                 E.description,
                 json_build_object('id', EC.id, 'name', EC.name) as event_category,
-                json_build_object('id', EL.id, 'name', EL.name, 'full_adress', EL.full_adress, 'latitude', EL.latitude, 'longitude', EL.longitude, 'max_capacity', EL.max_capacity, 'location', json_build_object('id', L.id, 'name', L.name, 'latitude', L.latitude, 'longitude', L.longitude, 'province', json_build_object('id', P.id, 'name', P.name, 'full_name', P.full_name, 'latitude', P.latitude, 'longitude', P.longitude, 'display_order', P.display_order))) as event_location,
+                json_build_object('id', EL.id, 'name', EL.name, 'full_address', EL.full_address, 'latitude', EL.latitude, 'longitude', EL.longitude, 'max_capacity', EL.max_capacity, 'location', json_build_object('id', L.id, 'name', L.name, 'latitude', L.latitude, 'longitude', L.longitude, 'province', json_build_object('id', P.id, 'name', P.name, 'full_name', P.full_name, 'latitude', P.latitude, 'longitude', P.longitude, 'display_order', P.display_order))) as event_location,
                 E.start_date,
                 E.duration_in_minutes,
                 E.price,
                 E.enabled_for_enrollment,
                 E.max_assistance,
                 json_build_object('id', U.id, 'username', U.username, 'first_name', U.first_name, 'last_name', U.last_name) as creator_user,
-                array(SELECT json_build_object('id', T.id, 'name', T.name) from tags T INNER JOIN event_tags ET on T.id = ET.id_tag where ET.id_event = E.id) as tags
+                array(SELECT json_build_object('id', T.id, 'name', T.name) from tags T INNER JOIN events_tags ET on T.id = ET.id_tag where ET.id_event = E.id) as tags
             FROM
                 events E
                 INNER JOIN event_categories EC on E.id_event_category = EC.id
@@ -41,31 +41,51 @@ TraerListado = async () => {
 }
 
 
-    TraerEventoFiltrado = async (name = "", category = "", date = "", tag = "") => {
-        let response = null;
-        const client = new Client(configs);
-        let filters = [{ type: name, addString: ' LOWER(E.name) like LOWER($)'}, { type: category, addString: ' EC.name like $' }, { type: date, addString: ' E.start_date::TIMESTAMP::DATE = DATE($)' }, { type: tag, addString: ' T.name like $' }]
-        filters = filters.filter((element) => element.type !== "")
-        let notEmpty = filters.map((element, index) => {
-            let posicion = element.addString.indexOf('$');
-            element.addString = element.addString.slice(0, posicion + 1) + (index+1) + element.addString.slice(posicion + 1);
-            if(element.addString.includes("E.name")) element.type = `%${element.type}%`
-            if(index < 3 && index + 1 !== filters.length) element.addString = element.addString.concat(" and")
-            return element
-        })
-        try {
-            await client.connect();
-            let sql = `SELECT E.id, E.name, E.description, E.start_date, E.duration_in_minutes, E.price, E.enabled_for_enrollment, E.max_assistance FROM events E INNER JOIN event_categories EC on E.id_event_category = EC.id INNER JOIN event_tags ET on ET.id_event = E.id INNER JOIN tags T on ET.id_tag = T.id where`;
-            notEmpty.forEach(element => sql = sql.concat(element.addString))
-            const values = notEmpty.map((element) => element.type);
-            const result = await client.query(sql, values);
-            await client.end();
-            response = result.rows[0];
-        } catch (error) {
-            console.log(error);
+TraerEventoFiltrado = async (name = "", category = "", date = "", tag = "") => {
+    let response = null;
+    const client = new Client(configs);
+    let filters = [
+        { type: name, addString: 'LOWER(E.name) LIKE LOWER($)', value: `%${name}%` },
+        { type: category, addString: 'EC.name LIKE $', value: category },
+        { type: date, addString: 'E.start_date::TIMESTAMP::DATE = DATE($)', value: date },
+        { type: tag, addString: 'T.name LIKE $', value: `%${tag}%` }
+    ];
+
+    filters = filters.filter((element) => element.type !== "");
+
+    let notEmpty = filters.map((element, index) => {
+        let posicion = element.addString.indexOf('$');
+        element.addString = element.addString.slice(0, posicion + 1) + (index + 1) + element.addString.slice(posicion + 1);
+        if (element.addString.includes("E.name") || element.addString.includes("T.name")) {
+            element.value = `%${element.value}%`;
         }
-        return response;
+        if (index < filters.length - 1) {
+            element.addString = element.addString.concat(" AND ");
+        }
+        return element;
+    });
+
+    try {
+        await client.connect();
+        let sql = `SELECT E.id, E.name, E.description, E.start_date, E.duration_in_minutes, E.price, E.enabled_for_enrollment, E.max_assistance 
+                   FROM events E 
+                   INNER JOIN event_categories EC on E.id_event_category = EC.id 
+                   INNER JOIN events_tags ET on ET.id_event = E.id 
+                   INNER JOIN tags T on ET.id_tag = T.id 
+                   WHERE `;
+        notEmpty.forEach(element => sql = sql.concat(element.addString));
+        const values = notEmpty.map((element) => element.value);
+        console.log("sql:",sql)
+        const result = await client.query(sql, values);
+        await client.end();
+        response = result.rows;
+    } catch (error) {
+        console.log(error);
     }
+    return response;
+}
+
+
 
     TraerEventoPorId = async (id) => {
         let response = null;
@@ -78,14 +98,14 @@ TraerListado = async () => {
         E.name,
         E.description,
         json_build_object('id', EC.id, 'name', EC.name) as event_category,
-        json_build_object('id', EL.id, 'name', EL.name, 'full_adress', EL.full_adress, 'latitude', EL.latitude, 'longitude', EL.longitude, 'max_capacity', EL.max_capacity, 'location', json_build_object('id', L.id, 'name', L.name, 'latitude', L.latitude, 'longitude', L.longitude, 'province', json_build_object('id', P.id, 'name', P.name, 'full_name', P.full_name, 'latitude', P.latitude, 'longitude', P.longitude, 'display_order', P.display_order))) as event_location,
+        json_build_object('id', EL.id, 'name', EL.name, 'full_address', EL.full_address, 'latitude', EL.latitude, 'longitude', EL.longitude, 'max_capacity', EL.max_capacity, 'location', json_build_object('id', L.id, 'name', L.name, 'latitude', L.latitude, 'longitude', L.longitude, 'province', json_build_object('id', P.id, 'name', P.name, 'full_name', P.full_name, 'latitude', P.latitude, 'longitude', P.longitude, 'display_order', P.display_order))) as event_location,
         E.start_date,
         E.duration_in_minutes,
         E.price,
         E.enabled_for_enrollment,
         E.max_assistance,
         json_build_object('id', U.id, 'username', U.username, 'first_name', U.first_name, 'last_name', U.last_name) as creator_user,
-        array(SELECT json_build_object('id', T.id, 'name', T.name) from tags T INNER JOIN event_tags ET on T.id = ET.id_tag where ET.id_event = E.id) as tags
+        array(SELECT json_build_object('id', T.id, 'name', T.name) from tags T INNER JOIN events_tags ET on T.id = ET.id_tag where ET.id_event = E.id) as tags
     FROM
         events E
         INNER JOIN event_categories EC on E.id_event_category = EC.id
@@ -105,38 +125,72 @@ const values = [id];
         return response;
     }
 
-    TraerParticipantes = async (id, firstName = "", lastName = "", user = "", attended = "", rating = "") => {
-        let response = null;
+    async TraerParticipantes(id, firstName, lastName, username, attended, rating) {
         const client = new Client(configs);
-        let filters = [{ type: firstName, addString: ' LOWER(U.first_name) like LOWER($)'}, { type: lastName, addString: ' LOWER(U.last_name) like LOWER($)' }, { type: user, addString: ' LOWER(U.username) like LOWER($)' }, { type: attended, addString: ' EE.attended = $' }, { type: rating, addString: ' EE.rating > $' }]
-        filters = filters.filter((element) => element.type !== "")
-        let notEmpty = filters.map((element, index) => {
-            let posicion = element.addString.indexOf('$');
-            element.addString = element.addString.slice(0, posicion + 1) + (index+1) + element.addString.slice(posicion + 1);
-            if(element.addString.includes("E.name")) element.type = `%${element.type}%`
-            if(index < 3 && index + 1 !== filters.length) element.addString = element.addString.concat(" and")
-            return element
-        })
-        try {
-            await client.connect();
-            let values = notEmpty.map((element) => element.type);
-            values.push(id)
-            let sql = `SELECT json_build_object('id', U.id, 'username', U.username, 'first_name', U.first_name, 'last_name', U.last_name) as user, EE.attended, EE.rating, EE.description from event_enrollments EE INNER JOIN users U on EE.id_user = U.id where EE.id_event = $${values.length} and`
-            notEmpty.forEach(element => sql = sql.concat(element.addString))
-            const result = await client.query(sql, values);
-            await client.end();
-            response = result.rows;
-        } catch (error) {
-            console.log(error);
+        await client.connect();
+        let sql = `SELECT json_build_object(
+            'id', u.id, 
+            'first_name', u.first_name, 
+            'last_name', u.last_name, 
+            'username', u.username
+        ) AS user, ee.attended, ee.rating, ee.description
+        FROM users u 
+        INNER JOIN events_enrollments ee ON u.id = ee.id_user
+        WHERE ee.id_event = $1`;
+        const values = [id];
+        let countParams = 1;
+    
+        if (firstName) {
+            sql += ` AND LOWER(u.first_name) = LOWER($${++countParams})`;
+            values.push(firstName);
         }
-        return response;
+        if (lastName) {
+            sql += ` AND LOWER(u.last_name) = LOWER($${++countParams})`;
+            values.push(lastName);
+        }
+        if (username) {
+            sql += ` AND LOWER(u.username) = LOWER($${++countParams})`;
+            values.push(username);
+        }
+        if (attended !== null) {
+            sql += ` AND ee.attended = $${++countParams}`;
+            values.push(attended);
+        }
+        if (rating) {
+            sql += ` AND ee.rating = $${++countParams}`;
+            values.push(rating);
+        }
+        
+        try {
+            const result = await client.query(sql, values);
+            const rows = result.rows;
+            const response = {
+                collection: rows,
+                pagination: {
+                    limit: 15,
+                    offset: 0,
+                    nextPage: null,
+                    total: rows.length
+                }
+            };
+            return response;
+        }
+        catch (error) {
+            console.error(error);
+            return null;    
+        }
+        finally {
+            client.end();
+        }
     }
+    
+    
     InsertarInscripciones = async (idEvent, idUser) => {
         let response = null;
         const client = new Client(configs);
         try {
             await client.connect();
-            const sql = `INSERT INTO event_enrollments (id_event, id_user, description, registration_date_time, attended, observations) SELECT $1, $2, null, now(), false, null WHERE EXISTS (SELECT 1 FROM events e WHERE e.id = $1);`
+            const sql = `INSERT INTO events_enrollments (id_event, id_user, description, registration_date_time, attended, observations) SELECT $1, $2, null, now(), false, null WHERE EXISTS (SELECT 1 FROM events e WHERE e.id = $1);`
             const values = [idEvent, idUser];
             const result = await client.query(sql, values);
             await client.end();
@@ -151,7 +205,7 @@ const values = [id];
         const client = new Client(configs);
         try {
             await client.connect();
-            const sql = `DELETE from event_enrollments where id_event = $1 and id_user = $2 and EXISTS (SELECT 1 FROM events e WHERE e.id = $1);`
+            const sql = `DELETE from events_enrollments where id_event = $1 and id_user = $2 and EXISTS (SELECT 1 FROM events e WHERE e.id = $1);`
             const values = [idEvent, idUser];
             const result = await client.query(sql, values);
             await client.end();
@@ -166,7 +220,7 @@ const values = [id];
         const client = new Client(configs);
         try {
             await client.connect();
-            const sql = `SELECT E.id, E.name, E.description, json_build_object('id', EC.id, 'name', EC.name) as event_category, json_build_object('id', EL.id, 'name', EL.name, 'full_adress', EL.full_adress, 'latitude', EL.latitude, 'longitude', EL.longitude, 'max_capacity', EL.max_capacity, 'location', json_build_object('id', L.id, 'name', L.name, 'latitude', L.latitude, 'longitude', L.longitude, 'province', json_build_object('id', P.id, 'name', P.name, 'full_name', P.full_name, 'latitude', P.latitude, 'longitude', P.longitude, 'display_order', P.display_order))) as event_location, E.start_date, E.duration_in_minutes, E.price, E.enabled_for_enrollment, E.max_assistance, json_build_object('id', U.id, 'username', U.username, 'first_name', U.first_name, 'last_name', U.last_name) as creator_user, array(SELECT json_build_object('id', T.id, 'name', T.name) from tags T INNER JOIN event_tags ET on T.id = ET.id_tag where ET.id_event = E.id) as tags FROM events E INNER JOIN event_categories EC on E.id_event_category = EC.id INNER JOIN event_locations EL on E.id_event_location = EL.id INNER JOIN locations L on EL.id_location = L.id INNER JOIN provinces P on L.id_province = P.id INNER JOIN users U on E.id_creator_user = U.id where E.id_creator_user = $1`;
+            const sql = `SELECT E.id, E.name, E.description, json_build_object('id', EC.id, 'name', EC.name) as event_category, json_build_object('id', EL.id, 'name', EL.name, 'full_address', EL.full_address, 'latitude', EL.latitude, 'longitude', EL.longitude, 'max_capacity', EL.max_capacity, 'location', json_build_object('id', L.id, 'name', L.name, 'latitude', L.latitude, 'longitude', L.longitude, 'province', json_build_object('id', P.id, 'name', P.name, 'full_name', P.full_name, 'latitude', P.latitude, 'longitude', P.longitude, 'display_order', P.display_order))) as event_location, E.start_date, E.duration_in_minutes, E.price, E.enabled_for_enrollment, E.max_assistance, json_build_object('id', U.id, 'username', U.username, 'first_name', U.first_name, 'last_name', U.last_name) as creator_user, array(SELECT json_build_object('id', T.id, 'name', T.name) from tags T INNER JOIN events_tags ET on T.id = ET.id_tag where ET.id_event = E.id) as tags FROM events E INNER JOIN event_categories EC on E.id_event_category = EC.id INNER JOIN event_locations EL on E.id_event_location = EL.id INNER JOIN locations L on EL.id_location = L.id INNER JOIN provinces P on L.id_province = P.id INNER JOIN users U on E.id_creator_user = U.id where E.id_creator_user = $1`;
             const values = [id];
             const result = await client.query(sql, values);
             await client.end();
@@ -244,7 +298,7 @@ const values = [id];
             await client.connect();
             let values = notEmpty.map((element) => element.type);
             values.push(rating)
-            let sql = `UPDATE event_enrollments set rating = $${values.length}`
+            let sql = `UPDATE events_enrollments set rating = $${values.length}`
             notEmpty.forEach(element => sql = sql.concat(element.addString))
             const result = await client.query(sql, values);
             await client.end();
@@ -303,7 +357,7 @@ const values = [id];
         const client = new Client(configs);
         try {
             await client.connect();
-            const sql = `SELECT EL.id, EL.name, EL.full_adress, EL.latitude, EL.longitude, EL.max_capacity, json_build_object('id', L.id, 'name', L.name, 'latitude', L.latitude, 'longitude', L.longitude, 'province', json_build_object('id', P.id, 'name', P.name, 'full_name', P.full_name, 'latitude', P.latitude, 'longitude', P.longitude, 'display_order', P.display_order)) as location from event_locations EL INNER JOIN locations L on EL.id_location = L.id INNER JOIN provinces P on L.id_province = P.id`;
+            const sql = `SELECT EL.id, EL.name, EL.full_address, EL.latitude, EL.longitude, EL.max_capacity, json_build_object('id', L.id, 'name', L.name, 'latitude', L.latitude, 'longitude', L.longitude, 'province', json_build_object('id', P.id, 'name', P.name, 'full_name', P.full_name, 'latitude', P.latitude, 'longitude', P.longitude, 'display_order', P.display_order)) as location from event_locations EL INNER JOIN locations L on EL.id_location = L.id INNER JOIN provinces P on L.id_province = P.id`;
             const result = await client.query(sql);
             await client.end();
             response = result.rows;
@@ -317,7 +371,7 @@ const values = [id];
         const client = new Client(configs);
         try {
             await client.connect();
-            const sql = `SELECT EL.id, EL.name, EL.full_adress, EL.latitude, EL.longitude, EL.max_capacity, json_build_object('id', L.id, 'name', L.name, 'latitude', L.latitude, 'longitude', L.longitude, 'province', json_build_object('id', P.id, 'name', P.name, 'full_name', P.full_name, 'latitude', P.latitude, 'longitude', P.longitude, 'display_order', P.display_order)) as location from event_locations EL INNER JOIN locations L on EL.id_location = L.id INNER JOIN provinces P on L.id_province = P.id where EL.id = $1`;
+            const sql = `SELECT EL.id, EL.name, EL.full_address, EL.latitude, EL.longitude, EL.max_capacity, json_build_object('id', L.id, 'name', L.name, 'latitude', L.latitude, 'longitude', L.longitude, 'province', json_build_object('id', P.id, 'name', P.name, 'full_name', P.full_name, 'latitude', P.latitude, 'longitude', P.longitude, 'display_order', P.display_order)) as location from event_locations EL INNER JOIN locations L on EL.id_location = L.id INNER JOIN provinces P on L.id_province = P.id where EL.id = $1`;
             const values = [id]
             const result = await client.query(sql, values);
             await client.end();
@@ -332,7 +386,7 @@ const values = [id];
         const client = new Client(configs);
         try {
             await client.connect();
-            const sql = `SELECT EL.id, EL.name, EL.full_adress, EL.max_capacity, EL.latitude, EL.longitude FROM event_locations EL where EL.id_location = $1`;
+            const sql = `SELECT EL.id, EL.name, EL.full_address, EL.max_capacity, EL.latitude, EL.longitude FROM event_locations EL where EL.id_location = $1`;
             const values = [id]
             const result = await client.query(sql, values);
             await client.end();
@@ -371,13 +425,13 @@ const values = [id];
         }
         return response;
     }
-    InsertarCategoria = async (name, displayOrder) => {
+    InsertarCategoria = async (name, display_order) => {
         let response = null;
         const client = new Client(configs);
         try {
             await client.connect();
             const sql = `INSERT INTO event_categories(name, display_order) values($1, $2)`;
-            const values = [name, displayOrder]
+            const values = [name, display_order]
             const result = await client.query(sql, values);
             await client.end();
             response = result.rowCount;
@@ -386,10 +440,10 @@ const values = [id];
         }
         return response;
     }
-    ActualizarCategoria = async (id, name, displayOrder) => {
+    ActualizarCategoria = async (id, name, display_order) => {
         let response = null;
         const client = new Client(configs);
-        let data = [{ type: name, addString: ' name = $'}, { type: displayOrder, addString: ' display_order = $' }, { type: id, addString: ' where id = $' }]
+        let data = [{ type: name, addString: ' name = $'}, { type: display_order, addString: ' display_order = $' }, { type: id, addString: ' where id = $' }]
         data = data.filter((element) => element.type !== "")
         let notEmpty = data.map((element, index) => {
             element.addString = element.addString.concat(index + 1);
@@ -429,7 +483,7 @@ const values = [id];
         const client = new Client(configs);
         try {
             await client.connect();
-            const sql = `SELECT COUNT(*) FROM event_enrollments WHERE id_event = $1;`
+            const sql = `SELECT COUNT(*) FROM events_enrollments WHERE id_event = $1;`
             const values = [idEvent];
             const result = await client.query(sql, values);
             await client.end();
@@ -444,7 +498,7 @@ const values = [id];
         const client = new Client(configs);
         try {
             await client.connect();
-            const sql = `SELECT COUNT(*) FROM event_enrollments WHERE id_event = $1 and id_user = $2;`
+            const sql = `SELECT COUNT(*) FROM events_enrollments WHERE id_event = $1 and id_user = $2;`
             const values = [idEvent, idUser];
             const result = await client.query(sql, values);
             await client.end();

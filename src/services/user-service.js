@@ -1,9 +1,9 @@
 import UserRepository from '../repositories/user-repository.js';
 
 export default class UserService {
-    InsertarRegistroUsuario = async (firstName, lastName, user, pass) => {
+    InsertarRegistroUsuario = async (first_name, last_name, user, pass) => {
         const repo = new UserRepository();
-        const returnArray = await repo.InsertarRegistroUsuario(firstName, lastName, user, pass);
+        const returnArray = await repo.InsertarRegistroUsuario(first_name, last_name, user, pass);
         return returnArray;
     }
     InsertarLogInUsuario = async (user, pass) => {

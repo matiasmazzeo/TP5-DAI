@@ -26,22 +26,42 @@ export default class ProvinceRepository {
         }
     };
 
-    CreaerProvincia = async (entity) => {
+    TraerLocacionesProvinciaPorId = async (id) => {
+        let returnProvs = null;
+        await client.connect();
+        try {
+            const sql = 'SELECT * FROM public.locations WHERE public.locations.id_province = $1';
+            const result = await client.query(sql, [id]);
+            await client.end();
+            if (result.rows.length > 0){
+                returnProvs = result.rows[0];
+            }
+            } catch (error) {
+            console.log(error);
+            returnProvs = null;
+        }
+        return returnProvs;
+    }
+
+    CrearProvincia = async (name, full_name, latitude, longitude, display_order) => {
+        
         try {
             await client.connect();
             const SQL = 'INSERT INTO provinces (name, full_name, latitude, longitude, display_order) VALUES ($1, $2, $3, $4, $5)';
-            const result = await client.query(SQL, [entity.name, entity.full_name, entity.latitude, entity.longitude, entity.display_order]);
+            const result = await client.query(SQL, [name, full_name, latitude, longitude, display_order]);
             return result.rowCount;
         } finally {
             await client.end();
         }
     };
 
-    ActualizarProvincia = async (entity) => {
+    ActualizarProvincia = async (name, full_name, latitude, longitude, display_order, id) => {
+        const client = new Client(configs);
+
         try {
             await client.connect();
             const SQL = 'UPDATE provinces SET name = $1, full_name = $2, latitude = $3, longitude = $4, display_order = $5 WHERE id = $6';
-            const result = await client.query(SQL, [entity.name, entity.full_name, entity.latitude, entity.longitude, entity.display_order, entity.id]);
+            const result = await client.query(SQL, [name, full_name, latitude, longitude, display_order, id]);
             return result.rowCount;
         } finally {
             await client.end();
@@ -49,13 +69,53 @@ export default class ProvinceRepository {
     };
 
     BorrarProvincia = async (id) => {
+        const client = new Client(configs);
         try {
             await client.connect();
-            const SQL = 'DELETE FROM provinces WHERE id = $1';
+    
+            let SQL = `DELETE FROM events_tags WHERE id_event IN (
+                SELECT id FROM events WHERE id_event_location IN (
+                    SELECT id FROM event_locations WHERE id_location IN (
+                        SELECT id FROM locations WHERE id_province = $1
+                    )
+                )
+            )`;
+            await client.query(SQL, [id]);
+    
+            SQL = `DELETE FROM events_enrollments WHERE id_event IN (
+                SELECT id FROM events WHERE id_event_location IN (
+                    SELECT id FROM event_locations WHERE id_location IN (
+                        SELECT id FROM locations WHERE id_province = $1
+                    )
+                )
+            )`;
+            await client.query(SQL, [id]);
+    
+            SQL = `DELETE FROM events WHERE id_event_location IN (
+                SELECT id FROM event_locations WHERE id_location IN (
+                    SELECT id FROM locations WHERE id_province = $1
+                )
+            )`;
+            await client.query(SQL, [id]);
+    
+            SQL = `DELETE FROM event_locations WHERE id_location IN (
+                SELECT id FROM locations WHERE id_province = $1
+            )`;
+            await client.query(SQL, [id]);
+    
+            SQL = 'DELETE FROM locations WHERE id_province = $1';
+            await client.query(SQL, [id]);
+    
+            SQL = 'DELETE FROM provinces WHERE id = $1';
             const result = await client.query(SQL, [id]);
+    
             return result.rowCount;
         } finally {
             await client.end();
         }
     };
+    
+    
+    
+    
 }
