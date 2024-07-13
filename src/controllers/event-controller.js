@@ -147,42 +147,6 @@ router.patch('/:id/enrollment/:entero', async (req, res) => {
     }
 })
 
-//11
-
-router.get('/location'), async (req, res) => {
-    const respuesta = await svc.TraerUbicaciones()
-    if (respuesta != null) {
-        res.status(200).json(respuesta)
-        return respuesta
-    } else {
-        res.status(400).send("ERROR")
-    }
-}
-router.get('/location/:id', async (req, res) => {
-
-    const respuesta = await svc.TraerUbicacionPorId(req.params.id)
-
-    if (respuesta != null) {
-        res.status(200).json(respuesta);
-        return respuesta;
-    } else {
-        res.status(404).send("No se encontro la Ubicacion");
-    }
-
-})
-
-router.get("/location/:id/event-location", async (req, res) => {
-
-    const respuesta = await svc.TraerUbicacionPorUbicacionId(req.params.id)
-    if (respuesta.length > 0) {
-        res.status(200).json(respuesta)
-        return respuesta
-    } else {
-        res.status(404).send("No se encontró ninguna localidad")
-    }
-
-});
-
 //12
 
 router.get('/event-category', async (req, res) => {
